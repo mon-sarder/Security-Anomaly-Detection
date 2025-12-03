@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: security-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: security_detection
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - security-network
+
+  backend:
+    build: ./backend
+    container_name: security-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=development
+      - MONGO_URI=mongodb://mongodb:27017/security_detection
+      - SECRET_KEY=your-secret-key-here
+      - JWT_SECRET_KEY=your-jwt-secret-key-here
+    volumes:
+      - ./backend:/app
+      - ./backend/ml_models:/app/ml_models
+      - ./backend/data:/app/data
+    depends_on:
+      - mongodb
+    networks:
+      - security-network
+    command: python run.py
+
+volumes:
+  mongodb_data:
+
+networks:
+  security-network:
+    driver: bridge
