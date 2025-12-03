@@ -1,67 +1,83 @@
 import React from 'react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { TimelineDataPoint } from '../../types/dashboard.types';
-import { formatDate } from '../../utils/formatters';
-import styles from './Dashboard.module.css';
+   import { TopRiskUser } from '../../types/dashboard.types';
+   import { formatRiskScore, getSeverityColor, getRiskLevel } from '../../utils/formatters';
+   import styles from './Dashboard.module.css';
 
-interface ActivityTimelineProps {
-  data: TimelineDataPoint[];
-}
+   interface TopRisksTableProps {
+     users: TopRiskUser[];
+   }
 
-export const ActivityTimeline: React.FC<ActivityTimelineProps> = ({ data }) => {
-  const formattedData = data.map((point) => ({
-    ...point,
-    time: new Date(point.timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    normal_logins: point.total_logins - point.anomalous_logins,
-  }));
+   export const TopRisksTable: React.FC<TopRisksTableProps> = ({ users }) => {
+     return (
+       <div className={styles.card}>
+         <div className={styles.cardHeader}>
+           <h2 className={styles.cardTitle}>Top Risk Users</h2>
+         </div>
 
-  return (
-    <div className={styles.card}>
-      <div className={styles.cardHeader}>
-        <h2 className={styles.cardTitle}>Login Activity Timeline</h2>
-      </div>
+         <div className={styles.tableContainer}>
+           {users.length === 0 ? (
+             <div className={styles.emptyState}>
+               <p>No risk data available</p>
+             </div>
+           ) : (
+             <table className={styles.table}>
+               <thead>
+                 <tr>
+                   <th>User</th>
+                   <th>Max Risk Score</th>
+                   <th>Avg Risk Score</th>
+                   <th>Anomalies</th>
+                   <th>Total Logins</th>
+                   <th>Status</th>
+                 </tr>
+               </thead>
+               <tbody>
+                 {users.map((user) => {
+                   const riskLevel = getRiskLevel(user.max_risk_score);
+                   return (
+                     <tr key={user.user_id}>
+                       <td>
+                         <div className={styles.userCell}>
+                           <span className={styles.userIcon}>👤</span>
+                           <div>
+                             <div className={styles.username}>{user.username}</div>
+                             <div className={styles.userId}>{user.user_id}</div>
+                           </div>
+                         </div>
+                       </td>
+                       <td>
+                         <span className={styles.riskScore}>
+                           {formatRiskScore(user.max_risk_score)}
+                         </span>
+                       </td>
+                       <td>
+                         <span className={styles.riskScore}>
+                           {formatRiskScore(user.avg_risk_score)}
+                         </span>
+                       </td>
+                       <td>
+                         <span className={styles.anomalyCount}>
+                           {user.anomaly_count}
+                         </span>
+                       </td>
+                       <td>{user.total_logins}</td>
+                       <td>
+                         <span
+                           className={styles.statusBadge}
+                           style={{ backgroundColor: getSeverityColor(riskLevel) }}
+                         >
+                           {riskLevel.toUpperCase()}
+                         </span>
+                       </td>
+                     </tr>
+                   );
+                 })}
+               </tbody>
+             </table>
+           )}
+         </div>
+       </div>
+     );
+   };
 
-      <div className={styles.chartContainer}>
-        {data.length === 0 ? (
-          <div className={styles.emptyState}>
-            <p>No activity data available</p>
-          </div>
-        ) : (
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={formattedData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 12 }}
-              />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip />
-              <Legend />
-              <Line
-                type="monotone"
-                dataKey="total_logins"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                name="Total Logins"
-                dot={{ r: 3 }}
-              />
-              <Line
-                type="monotone"
-                dataKey="anomalous_logins"
-                stroke="#ef4444"
-                strokeWidth={2}
-                name="Anomalous Logins"
-                dot={{ r: 3 }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default ActivityTimeline;
+   export default TopRisksTable;

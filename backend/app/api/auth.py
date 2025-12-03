@@ -5,7 +5,7 @@ import bcrypt
 from app import mongo
 from app.config import Config
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint('Auth', __name__)
 
 
 @auth_bp.route('/register', methods=['POST'])

@@ -38,13 +38,13 @@ def client(app):
 def auth_headers(client):
     """Create authenticated headers for testing"""
     # Register and login a test user
-    client.post('/api/auth/register', json={
+    client.post('/api/Auth/register', json={
         'username': 'testuser',
         'password': 'testpass123',
         'email': 'test@example.com'
     })
 
-    response = client.post('/api/auth/login', json={
+    response = client.post('/api/Auth/login', json={
         'username': 'testuser',
         'password': 'testpass123'
     })

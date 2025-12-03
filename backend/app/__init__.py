@@ -23,7 +23,7 @@ def create_app(config_name='default'):
     from app.api.login_analysis import login_analysis_bp
     from app.api.dashboard import dashboard_bp
 
-    app.register_blueprint(auth_bp, url_prefix='/api/auth')
+    app.register_blueprint(auth_bp, url_prefix='/api/Auth')
     app.register_blueprint(login_analysis_bp, url_prefix='/api/login')
     app.register_blueprint(dashboard_bp, url_prefix='/api/dashboard')
 
