@@ -1,0 +1,23 @@
+.risk-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-weight: 700;
+  color: white;
+  text-align: center;
+}
+
+.risk-badge.small {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+.risk-badge.medium {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+
+.risk-badge.large {
+  font-size: 14px;
+  padding: 6px 16px;
+}

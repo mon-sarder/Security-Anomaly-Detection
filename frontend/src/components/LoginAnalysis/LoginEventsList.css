@@ -1,0 +1,172 @@
+.login-events-container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.events-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.events-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  padding: 8px 16px;
+  background-color: white;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  background-color: #f3f4f6;
+}
+
+.filter-btn.active {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #3b82f6;
+}
+
+.events-list {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.events-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.events-table thead {
+  background-color: #f9fafb;
+}
+
+.events-table th {
+  padding: 12px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.events-table td {
+  padding: 12px;
+  font-size: 14px;
+  color: #374151;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.events-table tr.anomaly-row {
+  background-color: #fef2f2;
+}
+
+.user-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.username {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.user-id {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.device-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.device-os {
+  font-size: 12px;
+  color: #6b7280;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 10px;
+  font-weight: 700;
+  color: white;
+}
+
+.status-badge.anomaly {
+  background-color: #ef4444;
+}
+
+.status-badge.normal {
+  background-color: #10b981;
+}
+
+.status-badge.success {
+  background-color: #10b981;
+}
+
+.status-badge.failed {
+  background-color: #ef4444;
+}
+
+.details-btn {
+  padding: 6px 12px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.details-btn:hover {
+  background-color: #2563eb;
+}
+
+.empty-state {
+  padding: 60px 20px;
+  text-align: center;
+  color: #9ca3af;
+  font-size: 14px;
+}
+
+@media (max-width: 768px) {
+  .events-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .events-table {
+    font-size: 12px;
+  }
+
+  .events-table th,
+  .events-table td {
+    padding: 8px;
+  }
+}
