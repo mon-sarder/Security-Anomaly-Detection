@@ -33,7 +33,26 @@ jobs:
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        cache: 'pip'
+
+    - name: Cache pip packages
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('backend/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+
+    - name: Wait for MongoDB
+      run: |
+        echo "Waiting for MongoDB to be ready..."
+        for i in {1..30}; do
+          if mongosh --eval "db.adminCommand('ping')" localhost:27017 > /dev/null 2>&1; then
+            echo "✅ MongoDB is ready!"
+            break
+          fi
+          echo "⏳ Waiting for MongoDB... ($i/30)"
+          sleep 2
+        done
 
     - name: Install dependencies
       run: |
@@ -41,15 +60,31 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Create ML model directory
+      run: |
+        cd backend
+        mkdir -p ml_models
+        echo "📁 Created ml_models directory"
+
+    - name: Train ML model for testing
+      env:
+        PYTHONPATH: /home/runner/work/Security-Anomaly-Detection/Security-Anomaly-Detection/backend
+      run: |
+        cd backend
+        echo "🤖 Training ML model for tests..."
+        python -m app.ml.model_trainer || echo "⚠️ Model training skipped (optional for tests)"
+
     - name: Run tests with pytest
       env:
         MONGO_URI: mongodb://localhost:27017/security_detection_test
-        SECRET_KEY: test-secret-key
-        JWT_SECRET_KEY: test-jwt-secret
+        SECRET_KEY: test-secret-key-for-github-actions-ci-cd-testing
+        JWT_SECRET_KEY: test-jwt-secret-key-for-github-actions-testing
         FLASK_ENV: testing
+        MODEL_PATH: ./ml_models
+        PYTHONPATH: /home/runner/work/Security-Anomaly-Detection/Security-Anomaly-Detection/backend
       run: |
         cd backend
-        pytest tests/ -v --cov=app --cov-report=xml --cov-report=term
+        python -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=term --tb=short
 
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v3
@@ -60,6 +95,13 @@ jobs:
         fail_ci_if_error: false
 
     - name: Test Summary
+      if: always()
       run: |
-        echo "✅ Backend tests completed successfully!"
-        echo "📊 Coverage report generated"
+        echo "📊 Backend Test Results:"
+        echo "================================"
+        if [ -f backend/coverage.xml ]; then
+          echo "✅ Tests completed"
+          echo "📈 Coverage report generated"
+        else
+          echo "⚠️ Some tests may have failed"
+        fi
