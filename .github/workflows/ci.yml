@@ -1,0 +1,262 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  backend-tests:
+    runs-on: ubuntu-latest
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install Python dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt --break-system-packages
+        pip install pytest-cov --break-system-packages
+
+    - name: Wait for MongoDB to be ready
+      run: |
+        timeout 60 bash -c 'until nc -z localhost 27017; do sleep 1; done'
+
+    - name: Create environment file
+      run: |
+        cd backend
+        cat > .env << EOF
+        FLASK_ENV=testing
+        SECRET_KEY=test-secret-key-for-ci
+        JWT_SECRET_KEY=test-jwt-secret-key-for-ci
+        MONGO_URI=mongodb://localhost:27017/security_detection_test
+        MODEL_PATH=./ml_models
+        ANOMALY_THRESHOLD=0.7
+        LOW_RISK_THRESHOLD=0.3
+        MEDIUM_RISK_THRESHOLD=0.6
+        HIGH_RISK_THRESHOLD=0.8
+        IPSTACK_API_KEY=
+        CORS_ORIGINS=http://localhost:3000
+        EOF
+
+    - name: Setup ML models for testing
+      run: |
+        cd backend
+        python -c "
+        import os
+        import joblib
+        import numpy as np
+        from sklearn.ensemble import IsolationForest
+        from sklearn.preprocessing import StandardScaler
+        
+        # Create models directory
+        os.makedirs('ml_models', exist_ok=True)
+        
+        # Create minimal model for testing
+        model = IsolationForest(contamination=0.1, random_state=42, n_estimators=10)
+        scaler = StandardScaler()
+        
+        # Generate dummy data and fit
+        X = np.random.rand(100, 13)
+        X_scaled = scaler.fit_transform(X)
+        model.fit(X_scaled)
+        
+        # Feature columns
+        feature_columns = [
+            'hour', 'day_of_week', 'is_weekend', 'is_work_hours', 'is_night',
+            'latitude', 'longitude', 'distance_from_typical',
+            'browser', 'os', 'is_mobile', 'is_typical_device', 'success'
+        ]
+        
+        # Save model files
+        joblib.dump(model, 'ml_models/login_anomaly_detector.pkl')
+        joblib.dump(scaler, 'ml_models/login_anomaly_detector_scaler.pkl')
+        joblib.dump(feature_columns, 'ml_models/login_anomaly_detector_features.pkl')
+        joblib.dump({}, 'ml_models/login_anomaly_detector_user_profiles.pkl')
+        
+        print('ML models created successfully for testing')
+        "
+
+    - name: Run Python tests
+      run: |
+        cd backend
+        python -m pytest tests/ -v --tb=short
+      env:
+        FLASK_ENV: testing
+        PYTHONPATH: ${{ github.workspace }}/backend
+
+    - name: Generate coverage report
+      run: |
+        cd backend
+        python -m pytest tests/ --cov=app --cov-report=xml --cov-report=html
+      env:
+        FLASK_ENV: testing
+        PYTHONPATH: ${{ github.workspace }}/backend
+
+  frontend-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Run TypeScript check
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Run tests
+      run: |
+        cd frontend
+        npm test -- --coverage --watchAll=false
+      env:
+        CI: true
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [backend-tests, frontend-tests]
+
+    services:
+      mongodb:
+        image: mongo:7.0
+        ports:
+          - 27017:27017
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install backend dependencies
+      run: |
+        cd backend
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt --break-system-packages
+
+    - name: Install frontend dependencies
+      run: |
+        cd frontend
+        npm ci
+
+    - name: Wait for MongoDB
+      run: |
+        timeout 60 bash -c 'until nc -z localhost 27017; do sleep 1; done'
+
+    - name: Setup backend for integration tests
+      run: |
+        cd backend
+        cat > .env << EOF
+        FLASK_ENV=testing
+        SECRET_KEY=test-secret-key-for-ci
+        JWT_SECRET_KEY=test-jwt-secret-key-for-ci
+        MONGO_URI=mongodb://localhost:27017/security_detection_test
+        MODEL_PATH=./ml_models
+        ANOMALY_THRESHOLD=0.7
+        LOW_RISK_THRESHOLD=0.3
+        MEDIUM_RISK_THRESHOLD=0.6
+        HIGH_RISK_THRESHOLD=0.8
+        IPSTACK_API_KEY=
+        CORS_ORIGINS=http://localhost:3000
+        EOF
+        
+        # Setup ML models
+        python -c "
+        import os
+        import joblib
+        import numpy as np
+        from sklearn.ensemble import IsolationForest
+        from sklearn.preprocessing import StandardScaler
+        
+        os.makedirs('ml_models', exist_ok=True)
+        
+        model = IsolationForest(contamination=0.1, random_state=42, n_estimators=10)
+        scaler = StandardScaler()
+        
+        X = np.random.rand(100, 13)
+        X_scaled = scaler.fit_transform(X)
+        model.fit(X_scaled)
+        
+        feature_columns = [
+            'hour', 'day_of_week', 'is_weekend', 'is_work_hours', 'is_night',
+            'latitude', 'longitude', 'distance_from_typical',
+            'browser', 'os', 'is_mobile', 'is_typical_device', 'success'
+        ]
+        
+        joblib.dump(model, 'ml_models/login_anomaly_detector.pkl')
+        joblib.dump(scaler, 'ml_models/login_anomaly_detector_scaler.pkl')
+        joblib.dump(feature_columns, 'ml_models/login_anomaly_detector_features.pkl')
+        joblib.dump({}, 'ml_models/login_anomaly_detector_user_profiles.pkl')
+        "
+
+    - name: Build frontend
+      run: |
+        cd frontend
+        npm run build
+
+    - name: Start backend for integration tests
+      run: |
+        cd backend
+        python run.py &
+        sleep 10
+      env:
+        FLASK_ENV: testing
+        PYTHONPATH: ${{ github.workspace }}/backend
+
+    - name: Run integration health check
+      run: |
+        # Check if backend is responding
+        curl -f http://localhost:5000/api/health || exit 1
+        echo "Integration test passed - backend is healthy"
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Run Trivy vulnerability scanner
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'sarif'
+        output: 'trivy-results.sarif'
+
+    - name: Upload Trivy scan results to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v2
+      if: always()
+      with:
+        sarif_file: 'trivy-results.sarif'
