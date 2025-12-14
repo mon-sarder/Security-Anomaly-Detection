@@ -157,6 +157,60 @@ def sample_login_event():
     }
 
 
+# Add this fixture to your backend/tests/conftest.py file
+# Place it after the sample_login_event fixture
+
+@pytest.fixture(autouse=True)
+def reset_ml_globals():
+    """Reset global ML model variables before each test"""
+    # This ensures each test gets fresh ML model instances
+    import app.api.login_analysis as login_analysis_module
+
+    # Reset the global variables before test
+    login_analysis_module._detector = None
+    login_analysis_module._engineer = None
+
+    yield
+
+    # Clean up after test
+    login_analysis_module._detector = None
+    login_analysis_module._engineer = None
+
+
+# Also update the setup_environment fixture to ensure MODEL_PATH is set
+# Replace the existing setup_environment fixture with this:
+
+@pytest.fixture(autouse=True)
+def setup_environment(setup_ml_model):
+    """Setup test environment variables"""
+    original_env = os.environ.copy()
+
+    # Get the model directory from setup_ml_model
+    # The setup_ml_model fixture sets TestingConfig.MODEL_PATH
+    from app.config import TestingConfig
+
+    # Set test environment variables
+    test_env = {
+        'FLASK_ENV': 'testing',
+        'SECRET_KEY': 'test-secret-key',
+        'JWT_SECRET_KEY': 'test-jwt-secret-key',
+        'MONGO_URI': 'mongodb://localhost:27017/security_detection_test',
+        'MODEL_PATH': TestingConfig.MODEL_PATH,  # Use the temp directory from setup_ml_model
+        'ANOMALY_THRESHOLD': '0.7',
+        'LOW_RISK_THRESHOLD': '0.3',
+        'MEDIUM_RISK_THRESHOLD': '0.6',
+        'HIGH_RISK_THRESHOLD': '0.8',
+    }
+
+    for key, value in test_env.items():
+        os.environ[key] = str(value)
+
+    yield
+
+    # Restore original environment
+    os.environ.clear()
+    os.environ.update(original_env)
+
 # Skip tests that require MongoDB if it's not available
 def pytest_collection_modifyitems(config, items):
     """Modify test collection to skip tests if MongoDB is not available"""

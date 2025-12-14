@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from app import mongo
 from app.middleware.auth_middleware import token_required
@@ -8,7 +8,6 @@ from app.ml.feature_engineering import LoginFeatureEngineer
 from app.ml.anomaly_detector import LoginAnomalyDetector
 from app.utils.geolocation import geolocation_service
 from app.utils.validators import validate_login_event
-from app.config import Config
 import joblib
 import os
 
@@ -23,7 +22,8 @@ def get_detector():
     """Lazy load the ML detector"""
     global _detector
     if _detector is None:
-        _detector = LoginAnomalyDetector(model_path=Config.MODEL_PATH)
+        model_path = current_app.config.get('MODEL_PATH', './ml_models')
+        _detector = LoginAnomalyDetector(model_path=model_path)
         try:
             _detector.load_model()
         except FileNotFoundError:
@@ -37,7 +37,8 @@ def get_engineer():
     if _engineer is None:
         _engineer = LoginFeatureEngineer()
         # Load user profiles
-        profiles_path = os.path.join(Config.MODEL_PATH, 'login_anomaly_detector_user_profiles.pkl')
+        model_path = current_app.config.get('MODEL_PATH', './ml_models')
+        profiles_path = os.path.join(model_path, 'login_anomaly_detector_user_profiles.pkl')
         try:
             _engineer.user_profiles = joblib.load(profiles_path)
         except FileNotFoundError:
@@ -101,9 +102,10 @@ def analyze_login(current_user):
         is_anomaly, risk_score, reasons = detector.predict(features)
 
         # Determine alert severity based on risk score
-        if risk_score >= Config.HIGH_RISK_THRESHOLD:
+        config = current_app.config
+        if risk_score >= config.get('HIGH_RISK_THRESHOLD', 0.8):
             severity = AlertSeverity.HIGH
-        elif risk_score >= Config.MEDIUM_RISK_THRESHOLD:
+        elif risk_score >= config.get('MEDIUM_RISK_THRESHOLD', 0.6):
             severity = AlertSeverity.MEDIUM
         else:
             severity = AlertSeverity.LOW
