@@ -233,29 +233,3 @@ def pytest_collection_modifyitems(config, items):
                 item.add_marker(skip_mongodb)
 
 
-@pytest.fixture(autouse=True)
-def setup_environment():
-    """Setup test environment variables"""
-    original_env = os.environ.copy()
-
-    # Set test environment variables
-    test_env = {
-        'FLASK_ENV': 'testing',
-        'SECRET_KEY': 'test-secret-key',
-        'JWT_SECRET_KEY': 'test-jwt-secret-key',
-        'MONGO_URI': 'mongodb://localhost:27017/security_detection_test',
-        'MODEL_PATH': './ml_models',
-        'ANOMALY_THRESHOLD': '0.7',
-        'LOW_RISK_THRESHOLD': '0.3',
-        'MEDIUM_RISK_THRESHOLD': '0.6',
-        'HIGH_RISK_THRESHOLD': '0.8',
-    }
-
-    for key, value in test_env.items():
-        os.environ[key] = value
-
-    yield
-
-    # Restore original environment
-    os.environ.clear()
-    os.environ.update(original_env)
